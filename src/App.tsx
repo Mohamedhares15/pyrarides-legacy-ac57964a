@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SiteLayout } from "@/components/shared/SiteLayout";
 import Index from "./pages/Index";
 import Stables from "./pages/Stables";
+import StableDetail from "./pages/StableDetail";
 import Packages from "./pages/Packages";
 import Booking from "./pages/Booking";
 import Checkout from "./pages/Checkout";
@@ -30,7 +31,7 @@ const App = () => (
           <Route element={<SiteLayout />}>
             <Route path="/" element={<Index />} />
             <Route path="/stables" element={<Stables />} />
-            <Route path="/stables/:id" element={<Stables />} />
+            <Route path="/stables/:id" element={<StableDetail />} />
             <Route path="/packages" element={<Packages />} />
             <Route path="/packages/:id" element={<Packages />} />
             <Route path="/booking" element={<Booking />} />
