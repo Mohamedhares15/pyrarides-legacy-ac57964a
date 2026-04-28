@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Stables from "./pages/Stables";
 import StableDetail from "./pages/StableDetail";
 import Packages from "./pages/Packages";
+import PackageDetail from "./pages/PackageDetail";
 import Booking from "./pages/Booking";
 import Checkout from "./pages/Checkout";
 import Training from "./pages/Training";
@@ -33,7 +34,7 @@ const App = () => (
             <Route path="/stables" element={<Stables />} />
             <Route path="/stables/:id" element={<StableDetail />} />
             <Route path="/packages" element={<Packages />} />
-            <Route path="/packages/:id" element={<Packages />} />
+            <Route path="/packages/:id" element={<PackageDetail />} />
             <Route path="/booking" element={<Booking />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/training" element={<Training />} />
