@@ -2,13 +2,14 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 const NAV = [
   { to: "/stables", label: "Stables" },
   { to: "/packages", label: "Packages" },
   { to: "/training", label: "Training" },
+  { to: "/cercle", label: "Cercle" },
   { to: "/gallery", label: "Gallery" },
-  { to: "/about", label: "About" },
 ];
 
 export const Navbar = () => {
@@ -54,7 +55,8 @@ export const Navbar = () => {
             ))}
           </ul>
 
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-5">
+            <NotificationBell />
             <Link to="/auth" className="text-[13px] tracking-[0.16em] uppercase text-ink-muted hover:text-foreground transition-colors">Sign in</Link>
             <Link to="/booking" className="group relative inline-flex items-center gap-2 px-5 py-2.5 bg-foreground text-background text-[12px] tracking-[0.18em] uppercase overflow-hidden">
               <span className="relative z-10">Reserve</span>

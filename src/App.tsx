@@ -17,6 +17,11 @@ import About from "./pages/About";
 import FAQ from "./pages/FAQ";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
+import AdminHorses from "./pages/AdminHorses";
+import AdminSchedule from "./pages/AdminSchedule";
+import AdminAnalytics from "./pages/AdminAnalytics";
+import Reviews from "./pages/Reviews";
+import Cercle from "./pages/Cercle";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -41,8 +46,13 @@ const App = () => (
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/about" element={<About />} />
             <Route path="/faq" element={<FAQ />} />
+            <Route path="/reviews" element={<Reviews />} />
+            <Route path="/cercle" element={<Cercle />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/horses" element={<AdminHorses />} />
+            <Route path="/admin/schedule" element={<AdminSchedule />} />
+            <Route path="/admin/analytics" element={<AdminAnalytics />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="*" element={<NotFound />} />
           </Route>
