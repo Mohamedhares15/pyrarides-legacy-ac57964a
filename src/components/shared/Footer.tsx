@@ -12,8 +12,8 @@ export const Footer = () => (
         </p>
       </div>
       <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-10 text-sm">
-        <Col title="Discover" links={[["/stables","Stables"],["/packages","Packages"],["/training","Training"],["/gallery","Gallery"]]} />
-        <Col title="Concierge" links={[["/booking","Reserve"],["/checkout","Checkout"],["/dashboard","Your journeys"],["/faq","FAQ"]]} />
+        <Col title="Discover" links={[["/stables","Stables"],["/packages","Packages"],["/training","Training"],["/gallery","Gallery"],["/reviews","Letters"]]} />
+        <Col title="Concierge" links={[["/booking","Reserve"],["/checkout","Checkout"],["/dashboard","Your journeys"],["/cercle","Le Cercle"],["/faq","FAQ"]]} />
         <Col title="House" links={[["/about","About"],["/admin","Stable OS"],["/auth","Sign in"]]} />
       </div>
     </div>
