@@ -2,9 +2,11 @@ import { Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Navbar } from "./Navbar";
 import { Footer } from "./Footer";
+import { ConciergeChat } from "@/components/concierge/ConciergeChat";
 
 export const SiteLayout = () => {
   const { pathname } = useLocation();
+  const hideChat = pathname.startsWith("/auth");
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground grain">
       <Navbar />
@@ -22,6 +24,7 @@ export const SiteLayout = () => {
         </AnimatePresence>
       </main>
       <Footer />
+      {!hideChat && <ConciergeChat />}
     </div>
   );
 };

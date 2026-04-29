@@ -1,11 +1,15 @@
 import { Link, useParams, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { ArrowLeft, ArrowUpRight, MapPin, Clock, Users, Check } from "lucide-react";
 import { Reveal, StaggerGroup, StaggerItem, easeLuxury } from "@/components/shared/Motion";
 import { stables, horses, packages } from "@/data/mock";
+import { RatingsSection } from "@/components/reviews/RatingsSection";
+import { ReviewModal } from "@/components/reviews/ReviewModal";
 
 const StableDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [reviewOpen, setReviewOpen] = useState(false);
   const stable = stables.find((s) => s.id === id);
   if (!stable) return <Navigate to="/stables" replace />;
 
@@ -172,6 +176,10 @@ const StableDetail = () => {
           </div>
         </Reveal>
       </section>
+
+      {/* REVIEWS */}
+      <RatingsSection onWrite={() => setReviewOpen(true)} />
+      <ReviewModal open={reviewOpen} onClose={() => setReviewOpen(false)} packageName={stable.name} />
 
       {/* CTA */}
       <section className="container pb-24">

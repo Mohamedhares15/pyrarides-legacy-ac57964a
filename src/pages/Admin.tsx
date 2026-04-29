@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowUpRight, Calendar, Check, Clock, Plus, TrendingUp, Users } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowUpRight, Calendar, Check, Clock, Plus, TrendingUp, Users, BarChart3, Layers } from "lucide-react";
 import { Reveal, StaggerGroup, StaggerItem, easeLuxury } from "@/components/shared/Motion";
 import { horses, packages, stables } from "@/data/mock";
 import { cn } from "@/lib/utils";
@@ -133,6 +134,27 @@ const Overview = () => (
         </ul>
       </Reveal>
     </div>
+
+    {/* Sub-page nav */}
+    <Reveal className="mt-12">
+      <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-5">Deep dive</p>
+      <div className="grid md:grid-cols-3 gap-px bg-hairline border hairline">
+        {[
+          { to: "/admin/horses",    icon: Layers,    label: "Horse management",  hint: "Roster, CRUD, retire" },
+          { to: "/admin/schedule",  icon: Calendar,  label: "Booking schedule",  hint: "Calendar & day ledger" },
+          { to: "/admin/analytics", icon: BarChart3, label: "Revenue analytics", hint: "Trends & composition" },
+        ].map(({ to, icon: Icon, label, hint }) => (
+          <Link key={to} to={to} className="bg-background p-7 group hover:bg-surface/60 transition-colors flex items-start justify-between gap-6">
+            <div>
+              <Icon className="size-4 mb-4" />
+              <p className="font-display text-2xl leading-tight">{label}</p>
+              <p className="text-xs text-ink-muted mt-1.5">{hint}</p>
+            </div>
+            <ArrowUpRight className="size-4 mt-1 transition-transform duration-500 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+          </Link>
+        ))}
+      </div>
+    </Reveal>
   </>
 );
 
