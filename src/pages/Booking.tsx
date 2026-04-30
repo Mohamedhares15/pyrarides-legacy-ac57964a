@@ -306,20 +306,46 @@ const Booking = () => {
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {stableHorses.map((h) => {
                     const active = sel.horseId === h.id;
+                    const allowed = tierMeets(currentUser.rankPoints, h.adminTier);
+                    const ridesToday = MOCK_DAILY_RIDES[h.id] ?? 0;
+                    const welfareLocked = ridesToday >= 3; // 2 AM + 1 PM
+                    const onPick = () => {
+                      if (welfareLocked) { setWelfareHorse(h.id); return; }
+                      if (!allowed) { setOverrideHorse(h.id); return; }
+                      setSel({ ...sel, horseId: h.id });
+                    };
                     return (
                       <button
                         key={h.id}
-                        onClick={() => setSel({ ...sel, horseId: h.id })}
+                        onClick={onPick}
                         className={cn(
                           "group text-left relative overflow-hidden transition-all duration-500",
                           active ? "ring-1 ring-foreground" : "ring-1 ring-transparent hover:ring-hairline",
                         )}
                       >
-                        <div className="aspect-[3/4] overflow-hidden bg-surface">
-                          <motion.img src={h.image} alt={h.name} className="h-full w-full object-cover" whileHover={{ scale: 1.05 }} transition={{ duration: 1.2, ease: easeLuxury }} />
+                        <div className="aspect-[3/4] overflow-hidden bg-surface relative">
+                          <motion.img
+                            src={h.image}
+                            alt={h.name}
+                            className={cn("h-full w-full object-cover transition-[filter] duration-700", (!allowed || welfareLocked) && "grayscale opacity-60")}
+                            whileHover={{ scale: 1.05 }}
+                            transition={{ duration: 1.2, ease: easeLuxury }}
+                          />
+                          {(!allowed || welfareLocked) && (
+                            <span className="absolute inset-x-3 top-3 inline-flex items-center justify-between gap-2 bg-foreground/90 text-background px-3 py-1.5 text-[10px] tracking-luxury uppercase">
+                              <span className="inline-flex items-center gap-1.5">
+                                <Lock className="size-3" />
+                                {welfareLocked ? "Welfare paused" : `${h.adminTier} tier`}
+                              </span>
+                              <span className="opacity-70">Tap to request</span>
+                            </span>
+                          )}
                         </div>
                         <div className="p-4 bg-surface-elevated/60">
-                          <h3 className="font-display text-xl leading-tight">{h.name}</h3>
+                          <div className="flex items-baseline justify-between gap-3">
+                            <h3 className="font-display text-xl leading-tight">{h.name}</h3>
+                            <span className="text-[10px] tracking-luxury uppercase text-ink-muted">{h.adminTier}</span>
+                          </div>
                           <p className="mt-1 text-[11px] tracking-[0.14em] uppercase text-ink-muted">{h.breed} · {h.age} yrs</p>
                           <p className="mt-1.5 text-xs text-ink-soft">{h.temperament}</p>
                         </div>
