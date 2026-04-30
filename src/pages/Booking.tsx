@@ -39,25 +39,31 @@ const Booking = () => {
     party: 2,
   });
 
+  const [overrideHorse, setOverrideHorse] = useState<string | null>(null);
+  const [welfareHorse, setWelfareHorse] = useState<string | null>(null);
+
   // Auto-advance if a stable is preselected via URL
   useEffect(() => { if (params.get("stable")) setStep(1); }, []); // eslint-disable-line
 
   const stable = stables.find((s) => s.id === sel.stableId);
   const pkg = packages.find((p) => p.id === sel.packageId);
   const horse = horses.find((h) => h.id === sel.horseId);
+  const zone = transportZones.find((z) => z.id === sel.transportZoneId);
 
   const stablePackages = useMemo(
     () => packages.filter((p) => p.stableId === sel.stableId),
     [sel.stableId],
   );
   const stableHorses = useMemo(
-    () => horses.filter((h) => h.stableId === sel.stableId),
+    () => horses.filter((h) => h.stableId === sel.stableId && h.isActive),
     [sel.stableId],
   );
 
+  const requiresZone = !!pkg?.hasTransportation;
+
   const canNext = [
     !!sel.stableId,
-    !!sel.packageId,
+    !!sel.packageId && (!requiresZone || !!sel.transportZoneId),
     !!sel.date && sel.party > 0,
     !!sel.horseId,
   ][step];
@@ -69,8 +75,9 @@ const Booking = () => {
   const back = () => { if (step > 0) { setDirection(-1); setStep(step - 1); } };
 
   const subtotal = pkg ? pkg.price * sel.party : 0;
-  const concierge = subtotal * 0.08;
-  const total = subtotal + concierge;
+  const transport = zone ? zone.price : 0;
+  const concierge = (subtotal + transport) * 0.08;
+  const total = subtotal + transport + concierge;
 
   return (
     <div className="container pt-32 pb-32 min-h-screen">
