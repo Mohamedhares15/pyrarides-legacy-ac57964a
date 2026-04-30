@@ -15,7 +15,7 @@ const Checkout = () => {
   const sel = state?.sel;
   const [confirmed, setConfirmed] = useState(false);
   const [promo, setPromo] = useState("");
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; percentOff: number } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; percentOff: number; label: string } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cash">("card");
 
   if (!sel || !sel.stableId || !sel.packageId || !sel.horseId || !sel.date) {
