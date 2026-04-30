@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowUpRight, CalendarDays, MapPin, Clock } from "lucide-react";
+import { ArrowUpRight, CalendarDays, MapPin, Clock, Trophy, Sparkles } from "lucide-react";
 import { Reveal, StaggerGroup, StaggerItem, easeLuxury } from "@/components/shared/Motion";
-import { packages, stables, horses } from "@/data/mock";
+import { packages, stables, horses, currentUser, TIER_THRESHOLDS, type AdminTier } from "@/data/mock";
 import { cn } from "@/lib/utils";
 
 type Journey = {
