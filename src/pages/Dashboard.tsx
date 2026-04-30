@@ -58,6 +58,11 @@ const Dashboard = () => {
         ))}
       </StaggerGroup>
 
+      {/* Loyalty & Rank — pulled from currentUser.rankPoints, gated against TIER_THRESHOLDS */}
+      <Reveal className="mt-12">
+        <RankPanel />
+      </Reveal>
+
       {/* Upcoming */}
       <section className="mt-24">
         <div className="flex items-end justify-between mb-10 border-b hairline pb-5">
