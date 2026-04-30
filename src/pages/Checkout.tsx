@@ -1,18 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
-import { ArrowLeft, Check, CreditCard, Lock } from "lucide-react";
+import { ArrowLeft, Check, CreditCard, Lock, Banknote, AlertTriangle, Tag } from "lucide-react";
 import { Reveal, easeLuxury } from "@/components/shared/Motion";
-import { stables, packages, horses } from "@/data/mock";
+import { stables, packages, horses, transportZones, promoCodes, currentUser } from "@/data/mock";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-type Sel = { stableId?: string; packageId?: string; date?: Date; party: number; horseId?: string };
+type Sel = { stableId?: string; packageId?: string; date?: Date; party: number; horseId?: string; transportZoneId?: string };
 
 const Checkout = () => {
   const { state } = useLocation() as { state?: { sel?: Sel } };
   const sel = state?.sel;
   const [confirmed, setConfirmed] = useState(false);
+  const [promo, setPromo] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; percentOff: number } | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash">("card");
 
   if (!sel || !sel.stableId || !sel.packageId || !sel.horseId || !sel.date) {
     return <Navigate to="/booking" replace />;
