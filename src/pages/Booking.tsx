@@ -394,12 +394,14 @@ const Booking = () => {
 
             <Row label="Estate" value={stable?.name ?? "—"} />
             <Row label="Journey" value={pkg?.name ?? "—"} />
+            <Row label="Pick-up" value={zone?.name ?? (requiresZone ? "Select a zone" : "—")} />
             <Row label="Date" value={sel.date ? format(sel.date, "d MMM yyyy") : "—"} />
             <Row label="Party" value={`${sel.party} guest${sel.party === 1 ? "" : "s"}`} />
             <Row label="Horse" value={horse?.name ?? "—"} last />
 
             <div className="mt-6 pt-5 border-t hairline space-y-2 text-sm">
               <Line label="Subtotal" value={subtotal ? `$${subtotal.toFixed(0)}` : "—"} />
+              {transport > 0 && <Line label="Transportation" value={`$${transport.toFixed(0)}`} />}
               <Line label="Concierge (8%)" value={subtotal ? `$${concierge.toFixed(0)}` : "—"} />
             </div>
             <div className="mt-4 pt-4 border-t hairline flex items-baseline justify-between">
