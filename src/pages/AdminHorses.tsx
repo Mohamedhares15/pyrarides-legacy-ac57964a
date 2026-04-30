@@ -6,7 +6,7 @@ import { horses as initialHorses, stables, type Horse } from "@/data/mock";
 import { Reveal, StaggerGroup, StaggerItem, easeLuxury } from "@/components/shared/Motion";
 import { toast } from "sonner";
 
-const empty: Omit<Horse, "id"> = { stableId: "al-nasr", name: "", breed: "Egyptian Arabian", age: 5, temperament: "", image: "" };
+const empty: Omit<Horse, "id"> = { stableId: "al-nasr", name: "", breed: "Egyptian Arabian", age: 5, temperament: "", image: "", adminTier: "novice", pricePerHour: 120, isActive: true };
 
 const AdminHorses = () => {
   const [horses, setHorses] = useState<Horse[]>(initialHorses);
