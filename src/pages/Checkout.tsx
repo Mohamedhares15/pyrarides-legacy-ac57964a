@@ -4,11 +4,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { ArrowLeft, Check, CreditCard, Lock, Banknote, AlertTriangle, Tag } from "lucide-react";
 import { Reveal, easeLuxury } from "@/components/shared/Motion";
-import { stables, packages, horses, transportZones, promoCodes, currentUser } from "@/data/mock";
+import { stables, horses, promoCodes, currentUser } from "@/data/mock";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type Sel = { stableId?: string; packageId?: string; date?: Date; party: number; horseId?: string; transportZoneId?: string };
+// Checkout for the HORSE funnel only. The curated-package funnel uses
+// /checkout/package/:id — see CheckoutPackage.tsx.
+type Sel = { stableId?: string; date?: Date; party: number; horseId?: string; slot?: string };
 
 const Checkout = () => {
   const { state } = useLocation() as { state?: { sel?: Sel } };
@@ -18,20 +20,18 @@ const Checkout = () => {
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; percentOff: number; label: string } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cash">("card");
 
-  if (!sel || !sel.stableId || !sel.packageId || !sel.horseId || !sel.date) {
+  if (!sel || !sel.stableId || !sel.horseId || !sel.date || !sel.slot) {
     return <Navigate to="/booking" replace />;
   }
 
   const stable = stables.find((s) => s.id === sel.stableId)!;
-  const pkg = packages.find((p) => p.id === sel.packageId)!;
   const horse = horses.find((h) => h.id === sel.horseId)!;
-  const zone = transportZones.find((z) => z.id === sel.transportZoneId);
 
-  const subtotal = pkg.price * sel.party;
-  const transport = zone?.price ?? 0;
-  const discount = appliedPromo ? (subtotal + transport) * appliedPromo.percentOff : 0;
-  const concierge = (subtotal + transport - discount) * 0.08;
-  const total = subtotal + transport - discount + concierge;
+  // Horse funnel pricing — pricePerHour × party (basePrice never exposed).
+  const subtotal = horse.pricePerHour * sel.party;
+  const discount = appliedPromo ? subtotal * appliedPromo.percentOff : 0;
+  const concierge = (subtotal - discount) * 0.08;
+  const total = subtotal - discount + concierge;
 
   const cashBlocked = paymentMethod === "cash" && !currentUser.isTrustedRider;
 
@@ -63,24 +63,23 @@ const Checkout = () => {
           </Reveal>
 
           <div className="mt-16 grid lg:grid-cols-12 gap-12 lg:gap-16">
-            {/* DETAILS */}
             <div className="lg:col-span-7 space-y-12">
               <Reveal>
-                <Section eyebrow="Your journey">
+                <Section eyebrow="Your ride">
                   <div className="grid sm:grid-cols-12 gap-6 items-start">
                     <div className="sm:col-span-4 aspect-[4/5] overflow-hidden bg-surface">
-                      <img src={pkg.image} alt={pkg.name} className="h-full w-full object-cover" loading="lazy" />
+                      <img src={horse.image} alt={horse.name} className="h-full w-full object-cover" loading="lazy" />
                     </div>
                     <div className="sm:col-span-8">
                       <p className="text-[10px] tracking-luxury uppercase text-ink-muted">{stable.name}</p>
-                      <h3 className="font-display text-3xl mt-1 leading-tight">{pkg.name}</h3>
-                      <p className="mt-2 text-ink-muted">{pkg.tagline}</p>
+                      <h3 className="font-display text-3xl mt-1 leading-tight">{horse.name}</h3>
+                      <p className="mt-2 text-ink-muted">{horse.breed} · {horse.temperament}</p>
 
                       <dl className="mt-6 grid grid-cols-2 gap-4 text-sm">
                         <Meta label="Date" value={format(sel.date!, "d MMM yyyy")} />
-                        <Meta label="Party" value={`${sel.party} guest${sel.party === 1 ? "" : "s"}`} />
-                        <Meta label="Duration" value={pkg.duration} />
-                        <Meta label="Horse" value={horse.name} />
+                        <Meta label="Slot" value={sel.slot!} />
+                        <Meta label="Party" value={`${sel.party} rider${sel.party === 1 ? "" : "s"}`} />
+                        <Meta label="Tier" value={horse.adminTier} />
                       </dl>
                     </div>
                   </div>
@@ -103,7 +102,6 @@ const Checkout = () => {
 
               <Reveal delay={0.15}>
                 <Section eyebrow="Payment">
-                  {/* Method toggle — Card / Cash. Cash gated by isTrustedRider. */}
                   <div className="mb-8">
                     <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-3">Method</p>
                     <div className="relative inline-grid grid-cols-2 border hairline">
@@ -167,12 +165,10 @@ const Checkout = () => {
               </Reveal>
             </div>
 
-            {/* SUMMARY */}
             <aside className="lg:col-span-5">
               <div className="lg:sticky lg:top-28 border hairline bg-surface-elevated/60 p-8">
                 <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-6">Reservation summary</p>
 
-                {/* Promo code — sits above the subtotal, per directive */}
                 <div className="mb-6 pb-6 border-b hairline">
                   <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-3">Promo code</p>
                   <div className="flex items-end gap-3">
@@ -194,18 +190,14 @@ const Checkout = () => {
                     </button>
                   </div>
                   {appliedPromo && (
-                    <motion.p
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                      className="mt-3 text-xs text-foreground inline-flex items-center gap-2"
-                    >
+                    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 text-xs text-foreground inline-flex items-center gap-2">
                       <Check className="size-3" /> {appliedPromo.label}
                     </motion.p>
                   )}
                 </div>
 
                 <div className="space-y-3 text-sm">
-                  <Line label={`${pkg.name} × ${sel.party}`} value={`$${subtotal.toFixed(0)}`} />
-                  {transport > 0 && <Line label={`Transport · ${zone?.name}`} value={`$${transport.toFixed(0)}`} />}
+                  <Line label={`${horse.name} · ${sel.party}h × $${horse.pricePerHour}`} value={`$${subtotal.toFixed(0)}`} />
                   {discount > 0 && <Line label={`Discount · ${appliedPromo?.code}`} value={`−$${discount.toFixed(0)}`} />}
                   <Line label="Concierge service (8%)" value={`$${concierge.toFixed(0)}`} />
                 </div>

@@ -3,31 +3,55 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, CalendarIcon, Check, Minus, Plus, MapPin, Lock, ChevronDown, AlertTriangle,
+  ArrowLeft, ArrowRight, ArrowUpRight, CalendarIcon, Check, Minus, Plus, MapPin, Lock, AlertTriangle, Sun, Moon,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { easeLuxury } from "@/components/shared/Motion";
-import { stables, packages, horses, transportZones, currentUser, TIER_THRESHOLDS, type AdminTier } from "@/data/mock";
+import { stables, horses, currentUser, TIER_THRESHOLDS, type AdminTier, type Horse } from "@/data/mock";
 import { toast } from "sonner";
 
-const STEPS = ["Stable", "Package", "Date & Party", "Horse"] as const;
+// ─────────────────────────────────────────────────────────────────────────────
+// Funnel A — /booking
+// Strictly the HORSE reservation wizard (no curated packages).
+// Steps: Stable → Date & Party → Time slot → Horse
+// Slots are rendered per-horse and enforce Horse Welfare:
+//   - max 2 AM rides per horse per day
+//   - max 1 PM ride per horse per day
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STEPS = ["Stable", "Date & Party", "Time slot", "Horse"] as const;
+
+const AM_SLOTS = ["06:00", "08:00", "10:00"] as const;
+const PM_SLOTS = ["15:00", "17:00", "19:00"] as const;
+type Slot = typeof AM_SLOTS[number] | typeof PM_SLOTS[number];
+
+const isAM = (s: Slot) => (AM_SLOTS as readonly string[]).includes(s);
 
 type Selection = {
   stableId?: string;
-  packageId?: string;
   date?: Date;
   party: number;
+  slot?: Slot;
   horseId?: string;
-  transportZoneId?: string;
 };
 
-// Mocked welfare ledger — count of rides already booked per horse for the selected day.
-// In production this is a 400 from POST /api/bookings (Horse Welfare: max 2 AM, 1 PM).
-const MOCK_DAILY_RIDES: Record<string, number> = { h1: 2, h6: 3 };
+// Mocked welfare ledger — { horseId: { dateKey: { am: count, pm: count } } }
+// In production this is computed server-side from confirmed Bookings.
+const dateKey = (d: Date) => d.toISOString().slice(0, 10);
+const MOCK_LEDGER: Record<string, Record<string, { am: number; pm: number }>> = {
+  // Today + a couple days, deterministic mock state
+  h1: { [dateKey(new Date())]: { am: 2, pm: 0 } }, // AM full
+  h6: { [dateKey(new Date())]: { am: 1, pm: 1 } }, // PM full
+};
 
 const tierMeets = (rankPoints: number, tier: AdminTier) => rankPoints >= TIER_THRESHOLDS[tier];
+
+const horseSlotAvailable = (horseId: string, date: Date, slot: Slot) => {
+  const ledger = MOCK_LEDGER[horseId]?.[dateKey(date)] ?? { am: 0, pm: 0 };
+  return isAM(slot) ? ledger.am < 2 : ledger.pm < 1;
+};
 
 const Booking = () => {
   const [params] = useSearchParams();
@@ -42,29 +66,19 @@ const Booking = () => {
   const [overrideHorse, setOverrideHorse] = useState<string | null>(null);
   const [welfareHorse, setWelfareHorse] = useState<string | null>(null);
 
-  // Auto-advance if a stable is preselected via URL
   useEffect(() => { if (params.get("stable")) setStep(1); }, []); // eslint-disable-line
 
   const stable = stables.find((s) => s.id === sel.stableId);
-  const pkg = packages.find((p) => p.id === sel.packageId);
   const horse = horses.find((h) => h.id === sel.horseId);
-  const zone = transportZones.find((z) => z.id === sel.transportZoneId);
-
-  const stablePackages = useMemo(
-    () => packages.filter((p) => p.stableId === sel.stableId),
-    [sel.stableId],
-  );
   const stableHorses = useMemo(
     () => horses.filter((h) => h.stableId === sel.stableId && h.isActive),
     [sel.stableId],
   );
 
-  const requiresZone = !!pkg?.hasTransportation;
-
   const canNext = [
     !!sel.stableId,
-    !!sel.packageId && (!requiresZone || !!sel.transportZoneId),
     !!sel.date && sel.party > 0,
+    !!sel.slot,
     !!sel.horseId,
   ][step];
 
@@ -74,27 +88,32 @@ const Booking = () => {
   };
   const back = () => { if (step > 0) { setDirection(-1); setStep(step - 1); } };
 
-  const subtotal = pkg ? pkg.price * sel.party : 0;
-  const transport = zone ? zone.price : 0;
-  const concierge = (subtotal + transport) * 0.08;
-  const total = subtotal + transport + concierge;
+  // Pricing from horse.pricePerHour (the horse funnel — no packages here)
+  const subtotal = horse ? horse.pricePerHour * sel.party : 0;
+  const concierge = subtotal * 0.08;
+  const total = subtotal + concierge;
 
   return (
     <div className="container pt-32 pb-32 min-h-screen">
       {/* Header */}
       <div className="mb-12 md:mb-16 flex items-end justify-between gap-6">
         <div>
-          <p className="text-[11px] tracking-luxury uppercase text-ink-muted mb-3">Concierge · Reservation</p>
+          <p className="text-[11px] tracking-luxury uppercase text-ink-muted mb-3">Concierge · Horse reservation</p>
           <h1 className="font-display text-4xl md:text-6xl leading-[1] text-balance">
             {step === 0 ? "Choose your estate." :
-             step === 1 ? "Select your journey." :
-             step === 2 ? "When, and how many." :
+             step === 1 ? "When, and how many." :
+             step === 2 ? "An hour, gently set." :
                           "Your horse for the day."}
           </h1>
         </div>
-        <Link to="/" className="hidden sm:inline-flex items-center gap-2 text-[11px] tracking-luxury uppercase text-ink-muted hover:text-foreground transition-colors">
-          <ArrowLeft className="size-3.5" /> Cancel
-        </Link>
+        <div className="hidden sm:flex flex-col items-end gap-2">
+          <Link to="/" className="inline-flex items-center gap-2 text-[11px] tracking-luxury uppercase text-ink-muted hover:text-foreground transition-colors">
+            <ArrowLeft className="size-3.5" /> Cancel
+          </Link>
+          <Link to="/packages" className="text-[11px] tracking-luxury uppercase text-ink-muted hover:text-foreground transition-colors">
+            Looking for a curated journey? →
+          </Link>
+        </div>
       </div>
 
       {/* Progress */}
@@ -125,7 +144,6 @@ const Booking = () => {
       </ol>
 
       <div className="grid lg:grid-cols-12 gap-12 lg:gap-16">
-        {/* STEP CONTENT */}
         <div className="lg:col-span-8 min-h-[460px] relative">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
@@ -136,6 +154,7 @@ const Booking = () => {
               exit={{ opacity: 0, x: direction * -24 }}
               transition={{ duration: 0.5, ease: easeLuxury }}
             >
+              {/* STEP 0 — Stable */}
               {step === 0 && (
                 <div className="grid gap-4 md:grid-cols-3">
                   {stables.map((s) => {
@@ -143,7 +162,7 @@ const Booking = () => {
                     return (
                       <button
                         key={s.id}
-                        onClick={() => setSel({ ...sel, stableId: s.id, packageId: undefined, horseId: undefined })}
+                        onClick={() => setSel({ ...sel, stableId: s.id, horseId: undefined, slot: undefined })}
                         className={cn(
                           "group text-left transition-all duration-500 relative overflow-hidden",
                           active ? "ring-1 ring-foreground" : "ring-1 ring-transparent hover:ring-hairline",
@@ -170,78 +189,8 @@ const Booking = () => {
                 </div>
               )}
 
+              {/* STEP 1 — Date & Party */}
               {step === 1 && (
-                <div className="space-y-0">
-                  {stablePackages.length === 0 && (
-                    <p className="text-ink-muted">No packages for this estate.</p>
-                  )}
-                  {stablePackages.map((p, i) => {
-                    const active = sel.packageId === p.id;
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => setSel({ ...sel, packageId: p.id })}
-                        className={cn(
-                          "w-full grid md:grid-cols-12 gap-6 items-center py-6 border-t hairline last:border-b text-left transition-colors duration-500 relative",
-                          active ? "bg-surface" : "hover:bg-surface/50",
-                        )}
-                      >
-                        <div className="md:col-span-1 px-4 text-[11px] tracking-luxury uppercase text-ink-muted">№ {String(i + 1).padStart(2, "0")}</div>
-                        <div className="md:col-span-6 px-4">
-                          <h3 className="font-display text-2xl md:text-3xl leading-tight">{p.name}</h3>
-                          <p className="mt-1.5 text-ink-muted text-sm">{p.tagline}</p>
-                          <p className="mt-2 text-xs text-ink-muted">{p.duration} · {p.minPeople}–{p.maxPeople} guests</p>
-                        </div>
-                        <div className="md:col-span-3 px-4 text-sm">
-                          <p className="text-ink-muted text-[11px] tracking-luxury uppercase">From</p>
-                          <p className="font-display text-2xl">${p.price}<span className="text-sm text-ink-muted"> / guest</span></p>
-                        </div>
-                        <div className="md:col-span-2 px-4 flex md:justify-end">
-                          <span className={cn(
-                            "inline-flex size-9 items-center justify-center rounded-full border transition-all duration-500",
-                            active ? "bg-foreground text-background border-foreground" : "border-hairline text-ink-muted",
-                          )}>
-                            {active ? <Check className="size-4" /> : <Plus className="size-4" />}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-
-                  {pkg?.hasTransportation && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6, ease: easeLuxury }}
-                      className="mt-10 border-t hairline pt-8"
-                    >
-                      <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-4">Transportation · pick-up zone</p>
-                      <div className="grid md:grid-cols-12 gap-4 items-end">
-                        <div className="md:col-span-8 relative">
-                          <select
-                            value={sel.transportZoneId ?? ""}
-                            onChange={(e) => setSel({ ...sel, transportZoneId: e.target.value || undefined })}
-                            className="w-full appearance-none bg-transparent border-b hairline pb-3 pt-1 pr-8 font-display text-2xl md:text-3xl text-foreground focus:outline-none focus:border-foreground transition-colors cursor-pointer"
-                          >
-                            <option value="" disabled>Select your pick-up</option>
-                            {transportZones.map((z) => (
-                              <option key={z.id} value={z.id}>{z.name}{z.price > 0 ? `  ·  +$${z.price}` : "  ·  included"}</option>
-                            ))}
-                          </select>
-                          <ChevronDown className="absolute right-0 bottom-3.5 size-4 text-ink-muted pointer-events-none" />
-                        </div>
-                        <div className="md:col-span-4 text-right">
-                          <p className="text-[10px] tracking-luxury uppercase text-ink-muted">Add-on</p>
-                          <p className="font-display text-2xl">{zone ? (zone.price ? `+$${zone.price}` : "Included") : "—"}</p>
-                        </div>
-                      </div>
-                      <p className="mt-3 text-xs text-ink-muted">A private chauffeur will collect your party 60 minutes before departure.</p>
-                    </motion.div>
-                  )}
-                </div>
-              )}
-
-              {step === 2 && (
                 <div className="grid md:grid-cols-2 gap-12">
                   <div>
                     <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-3">Date</p>
@@ -261,7 +210,7 @@ const Booking = () => {
                         <Calendar
                           mode="single"
                           selected={sel.date}
-                          onSelect={(d) => setSel({ ...sel, date: d })}
+                          onSelect={(d) => setSel({ ...sel, date: d, slot: undefined, horseId: undefined })}
                           disabled={(d) => d < new Date(new Date().setHours(0,0,0,0))}
                           initialFocus
                           className="p-3 pointer-events-auto"
@@ -283,34 +232,40 @@ const Booking = () => {
                       </button>
                       <div className="text-center">
                         <p className="font-display text-5xl leading-none">{sel.party}</p>
-                        <p className="mt-2 text-xs tracking-luxury uppercase text-ink-muted">guest{sel.party === 1 ? "" : "s"}</p>
+                        <p className="mt-2 text-xs tracking-luxury uppercase text-ink-muted">rider{sel.party === 1 ? "" : "s"}</p>
                       </div>
                       <button
-                        onClick={() => setSel({ ...sel, party: Math.min(pkg?.maxPeople ?? 12, sel.party + 1) })}
+                        onClick={() => setSel({ ...sel, party: Math.min(8, sel.party + 1) })}
                         className="size-12 inline-flex items-center justify-center border hairline hover:bg-foreground hover:text-background hover:border-foreground transition-colors"
                         aria-label="Increase party"
                       >
                         <Plus className="size-4" />
                       </button>
                     </div>
-                    {pkg && (
-                      <p className="mt-4 text-sm text-ink-muted">
-                        This journey accommodates {pkg.minPeople}–{pkg.maxPeople} guests.
-                      </p>
-                    )}
+                    <p className="mt-4 text-sm text-ink-muted">A separate horse will be paired with each rider in step four.</p>
                   </div>
                 </div>
               )}
 
-              {step === 3 && (
+              {/* STEP 2 — Time slot, gated by per-horse welfare across the roster */}
+              {step === 2 && sel.date && (
+                <SlotPicker
+                  date={sel.date}
+                  horses={stableHorses}
+                  value={sel.slot}
+                  onSelect={(s) => setSel({ ...sel, slot: s, horseId: undefined })}
+                />
+              )}
+
+              {/* STEP 3 — Horse, only those available for the chosen slot */}
+              {step === 3 && sel.date && sel.slot && (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {stableHorses.map((h) => {
                     const active = sel.horseId === h.id;
                     const allowed = tierMeets(currentUser.rankPoints, h.adminTier);
-                    const ridesToday = MOCK_DAILY_RIDES[h.id] ?? 0;
-                    const welfareLocked = ridesToday >= 3; // 2 AM + 1 PM
+                    const slotOk = horseSlotAvailable(h.id, sel.date!, sel.slot!);
                     const onPick = () => {
-                      if (welfareLocked) { setWelfareHorse(h.id); return; }
+                      if (!slotOk) { setWelfareHorse(h.id); return; }
                       if (!allowed) { setOverrideHorse(h.id); return; }
                       setSel({ ...sel, horseId: h.id });
                     };
@@ -327,15 +282,15 @@ const Booking = () => {
                           <motion.img
                             src={h.image}
                             alt={h.name}
-                            className={cn("h-full w-full object-cover transition-[filter] duration-700", (!allowed || welfareLocked) && "grayscale opacity-60")}
+                            className={cn("h-full w-full object-cover transition-[filter] duration-700", (!allowed || !slotOk) && "grayscale opacity-60")}
                             whileHover={{ scale: 1.05 }}
                             transition={{ duration: 1.2, ease: easeLuxury }}
                           />
-                          {(!allowed || welfareLocked) && (
+                          {(!allowed || !slotOk) && (
                             <span className="absolute inset-x-3 top-3 inline-flex items-center justify-between gap-2 bg-foreground/90 text-background px-3 py-1.5 text-[10px] tracking-luxury uppercase">
                               <span className="inline-flex items-center gap-1.5">
                                 <Lock className="size-3" />
-                                {welfareLocked ? "Welfare paused" : `${h.adminTier} tier`}
+                                {!slotOk ? "Resting this slot" : `${h.adminTier} tier`}
                               </span>
                               <span className="opacity-70">Tap to request</span>
                             </span>
@@ -348,6 +303,7 @@ const Booking = () => {
                           </div>
                           <p className="mt-1 text-[11px] tracking-[0.14em] uppercase text-ink-muted">{h.breed} · {h.age} yrs</p>
                           <p className="mt-1.5 text-xs text-ink-soft">{h.temperament}</p>
+                          <p className="mt-3 text-xs text-foreground tabular-nums">${h.pricePerHour}<span className="text-ink-muted"> / hour</span></p>
                         </div>
                         {active && (
                           <motion.span layoutId="select-mark" className="absolute top-3 right-3 inline-flex size-7 items-center justify-center rounded-full bg-foreground text-background">
@@ -393,15 +349,13 @@ const Booking = () => {
             <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-5">Your reservation</p>
 
             <Row label="Estate" value={stable?.name ?? "—"} />
-            <Row label="Journey" value={pkg?.name ?? "—"} />
-            <Row label="Pick-up" value={zone?.name ?? (requiresZone ? "Select a zone" : "—")} />
             <Row label="Date" value={sel.date ? format(sel.date, "d MMM yyyy") : "—"} />
-            <Row label="Party" value={`${sel.party} guest${sel.party === 1 ? "" : "s"}`} />
+            <Row label="Party" value={`${sel.party} rider${sel.party === 1 ? "" : "s"}`} />
+            <Row label="Slot" value={sel.slot ?? "—"} />
             <Row label="Horse" value={horse?.name ?? "—"} last />
 
             <div className="mt-6 pt-5 border-t hairline space-y-2 text-sm">
-              <Line label="Subtotal" value={subtotal ? `$${subtotal.toFixed(0)}` : "—"} />
-              {transport > 0 && <Line label="Transportation" value={`$${transport.toFixed(0)}`} />}
+              <Line label={horse ? `Horse · ${sel.party}h × $${horse.pricePerHour}` : "Subtotal"} value={subtotal ? `$${subtotal.toFixed(0)}` : "—"} />
               <Line label="Concierge (8%)" value={subtotal ? `$${concierge.toFixed(0)}` : "—"} />
             </div>
             <div className="mt-4 pt-4 border-t hairline flex items-baseline justify-between">
@@ -410,13 +364,14 @@ const Booking = () => {
             </div>
 
             <p className="mt-6 text-xs text-ink-muted text-pretty">
-              No charge until your concierge confirms availability. Cancellation, gracious; up to 48 hours before arrival.
+              No charge until your concierge confirms. Looking for a curated package?{" "}
+              <Link to="/packages" className="text-foreground underline-offset-4 hover:underline">Browse journeys</Link>.
             </p>
           </div>
         </aside>
       </div>
 
-      {/* Skill Override Modal — surfaced when rider rankPoints < horse.adminTier (mirror of POST /api/bookings 400) */}
+      {/* Skill Override Modal */}
       <LuxuryModal
         open={!!overrideHorse}
         onClose={() => setOverrideHorse(null)}
@@ -448,12 +403,12 @@ const Booking = () => {
         })()}
       </LuxuryModal>
 
-      {/* Welfare Limit Modal — Max 2 AM rides, Max 1 PM ride per horse per day */}
+      {/* Welfare Modal */}
       <LuxuryModal
         open={!!welfareHorse}
         onClose={() => setWelfareHorse(null)}
         eyebrow="Horse welfare"
-        title="Resting today, by gentle order."
+        title="Resting this slot, by gentle order."
       >
         {welfareHorse && (() => {
           const h = horses.find((x) => x.id === welfareHorse)!;
@@ -461,8 +416,8 @@ const Booking = () => {
             <>
               <p className="text-ink-soft text-pretty leading-relaxed">
                 <span className="text-foreground">{h.name}</span> has reached the daily welfare limit
-                (no more than two morning rides and one afternoon ride). Please choose another horse,
-                or invite us to suggest a comparable companion from the roster.
+                for this period (no more than two morning rides and one afternoon ride). Please choose another
+                horse, or invite us to suggest a comparable companion from the roster.
               </p>
               <div className="mt-8 flex items-center justify-end gap-3">
                 <button onClick={() => setWelfareHorse(null)} className="px-5 py-3 text-[11px] tracking-[0.18em] uppercase text-ink-muted hover:text-foreground transition-colors">
@@ -479,6 +434,69 @@ const Booking = () => {
           );
         })()}
       </LuxuryModal>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SlotPicker — renders AM and PM time slots, each annotated with how many
+// horses in the roster still have welfare capacity at that hour.
+// ─────────────────────────────────────────────────────────────────────────────
+const SlotPicker = ({
+  date, horses: roster, value, onSelect,
+}: { date: Date; horses: Horse[]; value?: Slot; onSelect: (s: Slot) => void }) => {
+  const availableCount = (slot: Slot) =>
+    roster.filter((h) => horseSlotAvailable(h.id, date, slot)).length;
+
+  const Block = ({ slot }: { slot: Slot }) => {
+    const count = availableCount(slot);
+    const disabled = count === 0;
+    const active = value === slot;
+    return (
+      <button
+        onClick={() => !disabled && onSelect(slot)}
+        disabled={disabled}
+        className={cn(
+          "relative px-5 py-6 border hairline text-left transition-all duration-500",
+          active ? "bg-foreground text-background border-foreground" : "hover:bg-surface/60",
+          disabled && "opacity-30 cursor-not-allowed",
+        )}
+      >
+        <p className="font-display text-3xl leading-none">{slot}</p>
+        <p className={cn("mt-3 text-[10px] tracking-luxury uppercase", active ? "text-background/70" : "text-ink-muted")}>
+          {disabled ? "All horses resting" : `${count} horse${count === 1 ? "" : "s"} available`}
+        </p>
+        {active && (
+          <motion.span layoutId="slot-mark" className="absolute top-3 right-3 inline-flex size-6 items-center justify-center rounded-full bg-background text-foreground">
+            <Check className="size-3" />
+          </motion.span>
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <div className="space-y-10">
+      <div>
+        <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-4 inline-flex items-center gap-2">
+          <Sun className="size-3.5" /> Morning · max 2 rides per horse
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          {AM_SLOTS.map((s) => <Block key={s} slot={s} />)}
+        </div>
+      </div>
+      <div>
+        <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-4 inline-flex items-center gap-2">
+          <Moon className="size-3.5" /> Afternoon & evening · max 1 ride per horse
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          {PM_SLOTS.map((s) => <Block key={s} slot={s} />)}
+        </div>
+      </div>
+      <p className="text-xs text-ink-muted">
+        Slot capacity is computed per individual horse. Once you choose a time, only the horses with
+        remaining welfare capacity for that hour will appear.
+      </p>
     </div>
   );
 };
