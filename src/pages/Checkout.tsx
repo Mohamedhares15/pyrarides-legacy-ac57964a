@@ -172,8 +172,41 @@ const Checkout = () => {
               <div className="lg:sticky lg:top-28 border hairline bg-surface-elevated/60 p-8">
                 <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-6">Reservation summary</p>
 
+                {/* Promo code — sits above the subtotal, per directive */}
+                <div className="mb-6 pb-6 border-b hairline">
+                  <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-3">Promo code</p>
+                  <div className="flex items-end gap-3">
+                    <div className="flex-1 relative">
+                      <Tag className="absolute left-0 bottom-3 size-3.5 text-ink-muted" />
+                      <input
+                        value={promo}
+                        onChange={(e) => setPromo(e.target.value.toUpperCase())}
+                        placeholder="CERCLE10"
+                        className="w-full bg-transparent border-b hairline pb-3 pl-6 text-foreground placeholder:text-ink-muted/50 tracking-[0.18em] uppercase text-sm focus:outline-none focus:border-foreground transition-colors"
+                      />
+                    </div>
+                    <button
+                      onClick={applyPromo}
+                      disabled={!promo}
+                      className="px-4 py-2.5 border hairline text-[11px] tracking-[0.18em] uppercase hover:bg-foreground hover:text-background hover:border-foreground transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-foreground"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  {appliedPromo && (
+                    <motion.p
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                      className="mt-3 text-xs text-foreground inline-flex items-center gap-2"
+                    >
+                      <Check className="size-3" /> {appliedPromo.label}
+                    </motion.p>
+                  )}
+                </div>
+
                 <div className="space-y-3 text-sm">
                   <Line label={`${pkg.name} × ${sel.party}`} value={`$${subtotal.toFixed(0)}`} />
+                  {transport > 0 && <Line label={`Transport · ${zone?.name}`} value={`$${transport.toFixed(0)}`} />}
+                  {discount > 0 && <Line label={`Discount · ${appliedPromo?.code}`} value={`−$${discount.toFixed(0)}`} />}
                   <Line label="Concierge service (8%)" value={`$${concierge.toFixed(0)}`} />
                 </div>
 
@@ -183,10 +216,16 @@ const Checkout = () => {
                 </div>
 
                 <button
-                  onClick={() => setConfirmed(true)}
-                  className="mt-8 w-full inline-flex items-center justify-center gap-3 px-6 py-4 bg-foreground text-background text-[12px] tracking-[0.2em] uppercase group overflow-hidden relative"
+                  onClick={onConfirm}
+                  disabled={cashBlocked}
+                  className={cn(
+                    "mt-8 w-full inline-flex items-center justify-center gap-3 px-6 py-4 text-[12px] tracking-[0.2em] uppercase group overflow-hidden relative transition-colors",
+                    cashBlocked ? "bg-foreground/20 text-foreground/40 cursor-not-allowed" : "bg-foreground text-background",
+                  )}
                 >
-                  <span className="relative z-10">Confirm reservation</span>
+                  <span className="relative z-10">
+                    {paymentMethod === "cash" ? "Reserve · pay in cash on arrival" : "Confirm reservation"}
+                  </span>
                 </button>
 
                 <p className="mt-6 text-xs text-ink-muted text-pretty">
