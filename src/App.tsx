@@ -11,12 +11,17 @@ import Packages from "./pages/Packages";
 import PackageDetail from "./pages/PackageDetail";
 import Booking from "./pages/Booking";
 import Checkout from "./pages/Checkout";
+import CheckoutPackage from "./pages/CheckoutPackage";
 import Training from "./pages/Training";
 import Gallery from "./pages/Gallery";
 import About from "./pages/About";
 import FAQ from "./pages/FAQ";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
+import AdminGlobal from "./pages/dashboards/AdminGlobal";
+import CaptainDashboard from "./pages/dashboards/CaptainDashboard";
+import DriverDashboard from "./pages/dashboards/DriverDashboard";
+import CXMediaDashboard from "./pages/dashboards/CXMediaDashboard";
 import AdminHorses from "./pages/AdminHorses";
 import AdminSchedule from "./pages/AdminSchedule";
 import AdminAnalytics from "./pages/AdminAnalytics";
@@ -42,6 +47,7 @@ const App = () => (
             <Route path="/packages/:id" element={<PackageDetail />} />
             <Route path="/booking" element={<Booking />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/checkout/package/:id" element={<CheckoutPackage />} />
             <Route path="/training" element={<Training />} />
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/about" element={<About />} />
@@ -49,6 +55,10 @@ const App = () => (
             <Route path="/reviews" element={<Reviews />} />
             <Route path="/cercle" element={<Cercle />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/captain" element={<CaptainDashboard />} />
+            <Route path="/dashboard/driver" element={<DriverDashboard />} />
+            <Route path="/dashboard/cx-media" element={<CXMediaDashboard />} />
+            <Route path="/dashboard/admin" element={<AdminGlobal />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/horses" element={<AdminHorses />} />
             <Route path="/admin/schedule" element={<AdminSchedule />} />
