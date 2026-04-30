@@ -415,9 +415,111 @@ const Booking = () => {
           </div>
         </aside>
       </div>
+
+      {/* Skill Override Modal — surfaced when rider rankPoints < horse.adminTier (mirror of POST /api/bookings 400) */}
+      <LuxuryModal
+        open={!!overrideHorse}
+        onClose={() => setOverrideHorse(null)}
+        eyebrow="Skill mismatch"
+        title="A quiet word from the master rider."
+      >
+        {overrideHorse && (() => {
+          const h = horses.find((x) => x.id === overrideHorse)!;
+          return (
+            <>
+              <p className="text-ink-soft text-pretty leading-relaxed">
+                <span className="text-foreground">{h.name}</span> is reserved for our <span className="uppercase tracking-[0.18em] text-xs">{h.adminTier}</span> riders.
+                Your current standing is <span className="text-foreground">{currentUser.rankPoints} pts</span>.
+                You may request an override — our captain will personally review within the hour.
+              </p>
+              <div className="mt-8 flex items-center justify-end gap-3">
+                <button onClick={() => setOverrideHorse(null)} className="px-5 py-3 text-[11px] tracking-[0.18em] uppercase text-ink-muted hover:text-foreground transition-colors">
+                  Choose another
+                </button>
+                <button
+                  onClick={() => { toast.success("Override request sent. Our captain will write within the hour."); setOverrideHorse(null); }}
+                  className="px-5 py-3 bg-foreground text-background text-[11px] tracking-[0.18em] uppercase"
+                >
+                  Request override
+                </button>
+              </div>
+            </>
+          );
+        })()}
+      </LuxuryModal>
+
+      {/* Welfare Limit Modal — Max 2 AM rides, Max 1 PM ride per horse per day */}
+      <LuxuryModal
+        open={!!welfareHorse}
+        onClose={() => setWelfareHorse(null)}
+        eyebrow="Horse welfare"
+        title="Resting today, by gentle order."
+      >
+        {welfareHorse && (() => {
+          const h = horses.find((x) => x.id === welfareHorse)!;
+          return (
+            <>
+              <p className="text-ink-soft text-pretty leading-relaxed">
+                <span className="text-foreground">{h.name}</span> has reached the daily welfare limit
+                (no more than two morning rides and one afternoon ride). Please choose another horse,
+                or invite us to suggest a comparable companion from the roster.
+              </p>
+              <div className="mt-8 flex items-center justify-end gap-3">
+                <button onClick={() => setWelfareHorse(null)} className="px-5 py-3 text-[11px] tracking-[0.18em] uppercase text-ink-muted hover:text-foreground transition-colors">
+                  Choose another
+                </button>
+                <button
+                  onClick={() => { toast.success("Concierge will suggest a comparable horse shortly."); setWelfareHorse(null); }}
+                  className="px-5 py-3 bg-foreground text-background text-[11px] tracking-[0.18em] uppercase"
+                >
+                  Ask concierge
+                </button>
+              </div>
+            </>
+          );
+        })()}
+      </LuxuryModal>
     </div>
   );
 };
+
+const LuxuryModal = ({ open, onClose, eyebrow, title, children }: { open: boolean; onClose: () => void; eyebrow: string; title: string; children: React.ReactNode }) => (
+  <AnimatePresence>
+    {open && (
+      <motion.div
+        className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        transition={{ duration: 0.4, ease: easeLuxury }}
+      >
+        <motion.div
+          onClick={onClose}
+          className="absolute inset-0 bg-foreground/70 backdrop-blur-sm"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        />
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 12, scale: 0.98 }}
+          transition={{ duration: 0.55, ease: easeLuxury }}
+          className="relative w-full max-w-lg bg-background border hairline p-8 md:p-10 shadow-2xl"
+        >
+          <div className="flex items-start justify-between gap-6 mb-6">
+            <div>
+              <p className="text-[10px] tracking-luxury uppercase text-ink-muted inline-flex items-center gap-2">
+                <AlertTriangle className="size-3" /> {eyebrow}
+              </p>
+              <h2 className="mt-3 font-display text-3xl md:text-4xl leading-[1.05] text-balance">{title}</h2>
+            </div>
+            <button onClick={onClose} aria-label="Close" className="text-ink-muted hover:text-foreground transition-colors">
+              <Plus className="size-5 rotate-45" />
+            </button>
+          </div>
+          {children}
+        </motion.div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
 
 const Row = ({ label, value, last }: { label: string; value: string; last?: boolean }) => (
   <div className={cn("flex items-baseline justify-between gap-4 py-2.5", !last && "border-b hairline")}>
