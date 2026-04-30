@@ -25,9 +25,27 @@ const Checkout = () => {
   const stable = stables.find((s) => s.id === sel.stableId)!;
   const pkg = packages.find((p) => p.id === sel.packageId)!;
   const horse = horses.find((h) => h.id === sel.horseId)!;
+  const zone = transportZones.find((z) => z.id === sel.transportZoneId);
+
   const subtotal = pkg.price * sel.party;
-  const concierge = subtotal * 0.08;
-  const total = subtotal + concierge;
+  const transport = zone?.price ?? 0;
+  const discount = appliedPromo ? (subtotal + transport) * appliedPromo.percentOff : 0;
+  const concierge = (subtotal + transport - discount) * 0.08;
+  const total = subtotal + transport - discount + concierge;
+
+  const cashBlocked = paymentMethod === "cash" && !currentUser.isTrustedRider;
+
+  const applyPromo = () => {
+    const found = promoCodes.find((p) => p.code.toLowerCase() === promo.trim().toLowerCase());
+    if (!found) { toast.error("That code is not recognised."); return; }
+    setAppliedPromo(found);
+    toast.success(`${found.label} applied.`);
+  };
+
+  const onConfirm = () => {
+    if (cashBlocked) { toast.error("Cash is reserved for Trusted Riders. Please use a card."); return; }
+    setConfirmed(true);
+  };
 
   return (
     <div className="container pt-32 pb-32 min-h-screen">
