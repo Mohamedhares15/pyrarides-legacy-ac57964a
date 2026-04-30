@@ -207,6 +207,37 @@ const Booking = () => {
                       </button>
                     );
                   })}
+
+                  {pkg?.hasTransportation && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, ease: easeLuxury }}
+                      className="mt-10 border-t hairline pt-8"
+                    >
+                      <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-4">Transportation · pick-up zone</p>
+                      <div className="grid md:grid-cols-12 gap-4 items-end">
+                        <div className="md:col-span-8 relative">
+                          <select
+                            value={sel.transportZoneId ?? ""}
+                            onChange={(e) => setSel({ ...sel, transportZoneId: e.target.value || undefined })}
+                            className="w-full appearance-none bg-transparent border-b hairline pb-3 pt-1 pr-8 font-display text-2xl md:text-3xl text-foreground focus:outline-none focus:border-foreground transition-colors cursor-pointer"
+                          >
+                            <option value="" disabled>Select your pick-up</option>
+                            {transportZones.map((z) => (
+                              <option key={z.id} value={z.id}>{z.name}{z.price > 0 ? `  ·  +$${z.price}` : "  ·  included"}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-0 bottom-3.5 size-4 text-ink-muted pointer-events-none" />
+                        </div>
+                        <div className="md:col-span-4 text-right">
+                          <p className="text-[10px] tracking-luxury uppercase text-ink-muted">Add-on</p>
+                          <p className="font-display text-2xl">{zone ? (zone.price ? `+$${zone.price}` : "Included") : "—"}</p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs text-ink-muted">A private chauffeur will collect your party 60 minutes before departure.</p>
+                    </motion.div>
+                  )}
                 </div>
               )}
 
