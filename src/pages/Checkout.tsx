@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
-import { ArrowLeft, Check, CreditCard, Lock } from "lucide-react";
+import { ArrowLeft, Check, CreditCard, Lock, Banknote, AlertTriangle, Tag } from "lucide-react";
 import { Reveal, easeLuxury } from "@/components/shared/Motion";
-import { stables, packages, horses } from "@/data/mock";
+import { stables, packages, horses, transportZones, promoCodes, currentUser } from "@/data/mock";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-type Sel = { stableId?: string; packageId?: string; date?: Date; party: number; horseId?: string };
+type Sel = { stableId?: string; packageId?: string; date?: Date; party: number; horseId?: string; transportZoneId?: string };
 
 const Checkout = () => {
   const { state } = useLocation() as { state?: { sel?: Sel } };
   const sel = state?.sel;
   const [confirmed, setConfirmed] = useState(false);
+  const [promo, setPromo] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; percentOff: number; label: string } | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash">("card");
 
   if (!sel || !sel.stableId || !sel.packageId || !sel.horseId || !sel.date) {
     return <Navigate to="/booking" replace />;
@@ -21,9 +25,27 @@ const Checkout = () => {
   const stable = stables.find((s) => s.id === sel.stableId)!;
   const pkg = packages.find((p) => p.id === sel.packageId)!;
   const horse = horses.find((h) => h.id === sel.horseId)!;
+  const zone = transportZones.find((z) => z.id === sel.transportZoneId);
+
   const subtotal = pkg.price * sel.party;
-  const concierge = subtotal * 0.08;
-  const total = subtotal + concierge;
+  const transport = zone?.price ?? 0;
+  const discount = appliedPromo ? (subtotal + transport) * appliedPromo.percentOff : 0;
+  const concierge = (subtotal + transport - discount) * 0.08;
+  const total = subtotal + transport - discount + concierge;
+
+  const cashBlocked = paymentMethod === "cash" && !currentUser.isTrustedRider;
+
+  const applyPromo = () => {
+    const found = promoCodes.find((p) => p.code.toLowerCase() === promo.trim().toLowerCase());
+    if (!found) { toast.error("That code is not recognised."); return; }
+    setAppliedPromo(found);
+    toast.success(`${found.label} applied.`);
+  };
+
+  const onConfirm = () => {
+    if (cashBlocked) { toast.error("Cash is reserved for Trusted Riders. Please use a card."); return; }
+    setConfirmed(true);
+  };
 
   return (
     <div className="container pt-32 pb-32 min-h-screen">
@@ -81,13 +103,63 @@ const Checkout = () => {
 
               <Reveal delay={0.15}>
                 <Section eyebrow="Payment">
-                  <div className="grid sm:grid-cols-2 gap-x-8 gap-y-6">
-                    <div className="sm:col-span-2">
-                      <Field label="Card number" placeholder="•••• •••• •••• ••••" icon={<CreditCard className="size-4 text-ink-muted" />} />
+                  {/* Method toggle — Card / Cash. Cash gated by isTrustedRider. */}
+                  <div className="mb-8">
+                    <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-3">Method</p>
+                    <div className="relative inline-grid grid-cols-2 border hairline">
+                      {(["card", "cash"] as const).map((m) => {
+                        const active = paymentMethod === m;
+                        return (
+                          <button
+                            key={m}
+                            onClick={() => setPaymentMethod(m)}
+                            className={cn(
+                              "relative px-6 py-3 text-[11px] tracking-[0.2em] uppercase inline-flex items-center gap-2 transition-colors",
+                              active ? "text-background" : "text-ink-muted hover:text-foreground",
+                            )}
+                          >
+                            {active && <motion.span layoutId="pay-toggle" className="absolute inset-0 bg-foreground" transition={{ duration: 0.45, ease: easeLuxury }} />}
+                            <span className="relative z-10 inline-flex items-center gap-2">
+                              {m === "card" ? <CreditCard className="size-3.5" /> : <Banknote className="size-3.5" />}
+                              {m === "card" ? "Card" : "Cash"}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
-                    <Field label="Expiry" placeholder="MM / YY" />
-                    <Field label="CVC" placeholder="•••" />
+                    <AnimatePresence>
+                      {cashBlocked && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.4, ease: easeLuxury }}
+                          className="mt-4 inline-flex items-start gap-2 text-xs text-ink-muted text-pretty max-w-md border-l-2 border-foreground/40 pl-3"
+                        >
+                          <AlertTriangle className="size-3.5 mt-0.5 shrink-0" />
+                          <span>Cash payments are reserved for Trusted Riders. First-time guests must secure their reservation via card.</span>
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
                   </div>
+
+                  <AnimatePresence mode="wait">
+                    {paymentMethod === "card" && (
+                      <motion.div
+                        key="card-fields"
+                        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+                        transition={{ duration: 0.4, ease: easeLuxury }}
+                        className="grid sm:grid-cols-2 gap-x-8 gap-y-6"
+                      >
+                        <div className="sm:col-span-2">
+                          <Field label="Card number" placeholder="•••• •••• •••• ••••" icon={<CreditCard className="size-4 text-ink-muted" />} />
+                        </div>
+                        <Field label="Expiry" placeholder="MM / YY" />
+                        <Field label="CVC" placeholder="•••" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <p className="mt-6 inline-flex items-center gap-2 text-xs text-ink-muted">
                     <Lock className="size-3" /> No charge until your concierge confirms within 24 hours.
                   </p>
@@ -100,8 +172,41 @@ const Checkout = () => {
               <div className="lg:sticky lg:top-28 border hairline bg-surface-elevated/60 p-8">
                 <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-6">Reservation summary</p>
 
+                {/* Promo code — sits above the subtotal, per directive */}
+                <div className="mb-6 pb-6 border-b hairline">
+                  <p className="text-[10px] tracking-luxury uppercase text-ink-muted mb-3">Promo code</p>
+                  <div className="flex items-end gap-3">
+                    <div className="flex-1 relative">
+                      <Tag className="absolute left-0 bottom-3 size-3.5 text-ink-muted" />
+                      <input
+                        value={promo}
+                        onChange={(e) => setPromo(e.target.value.toUpperCase())}
+                        placeholder="CERCLE10"
+                        className="w-full bg-transparent border-b hairline pb-3 pl-6 text-foreground placeholder:text-ink-muted/50 tracking-[0.18em] uppercase text-sm focus:outline-none focus:border-foreground transition-colors"
+                      />
+                    </div>
+                    <button
+                      onClick={applyPromo}
+                      disabled={!promo}
+                      className="px-4 py-2.5 border hairline text-[11px] tracking-[0.18em] uppercase hover:bg-foreground hover:text-background hover:border-foreground transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-foreground"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  {appliedPromo && (
+                    <motion.p
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                      className="mt-3 text-xs text-foreground inline-flex items-center gap-2"
+                    >
+                      <Check className="size-3" /> {appliedPromo.label}
+                    </motion.p>
+                  )}
+                </div>
+
                 <div className="space-y-3 text-sm">
                   <Line label={`${pkg.name} × ${sel.party}`} value={`$${subtotal.toFixed(0)}`} />
+                  {transport > 0 && <Line label={`Transport · ${zone?.name}`} value={`$${transport.toFixed(0)}`} />}
+                  {discount > 0 && <Line label={`Discount · ${appliedPromo?.code}`} value={`−$${discount.toFixed(0)}`} />}
                   <Line label="Concierge service (8%)" value={`$${concierge.toFixed(0)}`} />
                 </div>
 
@@ -111,10 +216,16 @@ const Checkout = () => {
                 </div>
 
                 <button
-                  onClick={() => setConfirmed(true)}
-                  className="mt-8 w-full inline-flex items-center justify-center gap-3 px-6 py-4 bg-foreground text-background text-[12px] tracking-[0.2em] uppercase group overflow-hidden relative"
+                  onClick={onConfirm}
+                  disabled={cashBlocked}
+                  className={cn(
+                    "mt-8 w-full inline-flex items-center justify-center gap-3 px-6 py-4 text-[12px] tracking-[0.2em] uppercase group overflow-hidden relative transition-colors",
+                    cashBlocked ? "bg-foreground/20 text-foreground/40 cursor-not-allowed" : "bg-foreground text-background",
+                  )}
                 >
-                  <span className="relative z-10">Confirm reservation</span>
+                  <span className="relative z-10">
+                    {paymentMethod === "cash" ? "Reserve · pay in cash on arrival" : "Confirm reservation"}
+                  </span>
                 </button>
 
                 <p className="mt-6 text-xs text-ink-muted text-pretty">

@@ -5,6 +5,16 @@ import horseGrey from "@/assets/horse-grey.jpg";
 import horseChestnut from "@/assets/horse-chestnut.jpg";
 import horseBlack from "@/assets/horse-black.jpg";
 
+// Skill tier ladder. Compared against User.rankPoints to gate selection.
+export type AdminTier = "novice" | "intermediate" | "advanced" | "master";
+
+export const TIER_THRESHOLDS: Record<AdminTier, number> = {
+  novice: 0,
+  intermediate: 1200,
+  advanced: 1800,
+  master: 2400,
+};
+
 export type Horse = {
   id: string;
   stableId: string;
@@ -13,6 +23,10 @@ export type Horse = {
   age: number;
   temperament: string;
   image: string;
+  // Public, dictionary-aligned fields. basePrice is intentionally NEVER exposed.
+  adminTier: AdminTier;
+  pricePerHour: number;
+  isActive: boolean;
 };
 
 export type Stable = {
@@ -72,15 +86,63 @@ export const stables: Stable[] = [
 ];
 
 export const horses: Horse[] = [
-  { id: "h1", stableId: "al-nasr", name: "Nefertari", breed: "Egyptian Arabian", age: 7, temperament: "Spirited · advanced riders", image: horseChestnut },
-  { id: "h2", stableId: "al-nasr", name: "Anubis", breed: "Egyptian Arabian", age: 9, temperament: "Composed · all levels", image: horseBlack },
-  { id: "h3", stableId: "al-nasr", name: "Sirocco", breed: "Egyptian Arabian", age: 6, temperament: "Gentle · novices welcome", image: horseGrey },
-  { id: "h4", stableId: "al-nasr", name: "Khepri", breed: "Egyptian Arabian", age: 11, temperament: "Stately · intermediate", image: horsePortrait },
-  { id: "h5", stableId: "saqqara", name: "Isis", breed: "Egyptian Arabian", age: 8, temperament: "Elegant · dressage trained", image: horseGrey },
-  { id: "h6", stableId: "saqqara", name: "Ra", breed: "Egyptian Arabian", age: 10, temperament: "Bold · advanced riders", image: horseChestnut },
-  { id: "h7", stableId: "saqqara", name: "Bastet", breed: "Egyptian Arabian", age: 5, temperament: "Quick · intermediate", image: horseBlack },
-  { id: "h8", stableId: "house-of-horus", name: "Horus", breed: "Egyptian Arabian", age: 12, temperament: "Regal · all levels", image: horsePortrait },
-  { id: "h9", stableId: "house-of-horus", name: "Nut", breed: "Egyptian Arabian", age: 7, temperament: "Calm · novices welcome", image: horseGrey },
+  { id: "h1", stableId: "al-nasr", name: "Nefertari", breed: "Egyptian Arabian", age: 7, temperament: "Spirited · advanced riders", image: horseChestnut, adminTier: "advanced", pricePerHour: 180, isActive: true },
+  { id: "h2", stableId: "al-nasr", name: "Anubis", breed: "Egyptian Arabian", age: 9, temperament: "Composed · all levels", image: horseBlack, adminTier: "novice", pricePerHour: 120, isActive: true },
+  { id: "h3", stableId: "al-nasr", name: "Sirocco", breed: "Egyptian Arabian", age: 6, temperament: "Gentle · novices welcome", image: horseGrey, adminTier: "novice", pricePerHour: 110, isActive: true },
+  { id: "h4", stableId: "al-nasr", name: "Khepri", breed: "Egyptian Arabian", age: 11, temperament: "Stately · intermediate", image: horsePortrait, adminTier: "intermediate", pricePerHour: 150, isActive: true },
+  { id: "h5", stableId: "saqqara", name: "Isis", breed: "Egyptian Arabian", age: 8, temperament: "Elegant · dressage trained", image: horseGrey, adminTier: "intermediate", pricePerHour: 160, isActive: true },
+  { id: "h6", stableId: "saqqara", name: "Ra", breed: "Egyptian Arabian", age: 10, temperament: "Bold · advanced riders", image: horseChestnut, adminTier: "master", pricePerHour: 220, isActive: true },
+  { id: "h7", stableId: "saqqara", name: "Bastet", breed: "Egyptian Arabian", age: 5, temperament: "Quick · intermediate", image: horseBlack, adminTier: "intermediate", pricePerHour: 150, isActive: true },
+  { id: "h8", stableId: "house-of-horus", name: "Horus", breed: "Egyptian Arabian", age: 12, temperament: "Regal · all levels", image: horsePortrait, adminTier: "advanced", pricePerHour: 200, isActive: true },
+  { id: "h9", stableId: "house-of-horus", name: "Nut", breed: "Egyptian Arabian", age: 7, temperament: "Calm · novices welcome", image: horseGrey, adminTier: "novice", pricePerHour: 115, isActive: true },
+];
+
+// ────────────────────────────────────────────────────────────
+// Transport zones — surfaced as a dropdown on packages with hasTransportation.
+// ────────────────────────────────────────────────────────────
+export type TransportZone = {
+  id: string;
+  name: string;
+  price: number; // add-on, USD
+};
+
+export const transportZones: TransportZone[] = [
+  { id: "tz-giza", name: "Giza · Pyramids quarter", price: 0 },
+  { id: "tz-zamalek", name: "Zamalek · Cairo island", price: 45 },
+  { id: "tz-newcairo", name: "New Cairo · East", price: 70 },
+  { id: "tz-airport", name: "Cairo International Airport", price: 95 },
+  { id: "tz-northcoast", name: "North Coast · by request", price: 240 },
+];
+
+// ────────────────────────────────────────────────────────────
+// Current rider session (mocked until Lovable Cloud auth lands).
+// Drives skill-gating + cash-payment trust check.
+// ────────────────────────────────────────────────────────────
+export type CurrentUser = {
+  id: string;
+  fullName: string;
+  email: string;
+  role: "rider" | "stable_owner" | "admin" | "cx_media" | "captain" | "driver";
+  rankPoints: number;
+  isTrustedRider: boolean;
+};
+
+export const currentUser: CurrentUser = {
+  id: "u-demo",
+  fullName: "Aya Karim",
+  email: "aya@pyrarides.demo",
+  role: "rider",
+  rankPoints: 1350, // intermediate
+  isTrustedRider: false,
+};
+
+// ────────────────────────────────────────────────────────────
+// Promo codes (validated client-side; backend remains source of truth).
+// ────────────────────────────────────────────────────────────
+export type PromoCode = { code: string; percentOff: number; label: string };
+export const promoCodes: PromoCode[] = [
+  { code: "CERCLE10", percentOff: 0.10, label: "Cercle members · 10% off" },
+  { code: "SUNRISE15", percentOff: 0.15, label: "Sunrise season · 15% off" },
 ];
 
 export type Package = {
