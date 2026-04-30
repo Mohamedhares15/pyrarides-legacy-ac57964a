@@ -145,7 +145,7 @@ const PackageDetail = () => {
             </div>
 
             <Link
-              to={`/booking?stable=${stable.id}&package=${pkg.id}`}
+              to={`/checkout/package/${pkg.id}`}
               className="mt-8 w-full inline-flex items-center justify-center gap-3 px-6 py-4 bg-foreground text-background text-[12px] tracking-[0.2em] uppercase group"
             >
               Begin reservation
