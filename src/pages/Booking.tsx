@@ -3,13 +3,14 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, CalendarIcon, Check, Minus, Plus, MapPin,
+  ArrowLeft, ArrowRight, ArrowUpRight, CalendarIcon, Check, Minus, Plus, MapPin, Lock, ChevronDown, AlertTriangle,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { easeLuxury } from "@/components/shared/Motion";
-import { stables, packages, horses } from "@/data/mock";
+import { stables, packages, horses, transportZones, currentUser, TIER_THRESHOLDS, type AdminTier } from "@/data/mock";
+import { toast } from "sonner";
 
 const STEPS = ["Stable", "Package", "Date & Party", "Horse"] as const;
 
@@ -19,7 +20,14 @@ type Selection = {
   date?: Date;
   party: number;
   horseId?: string;
+  transportZoneId?: string;
 };
+
+// Mocked welfare ledger — count of rides already booked per horse for the selected day.
+// In production this is a 400 from POST /api/bookings (Horse Welfare: max 2 AM, 1 PM).
+const MOCK_DAILY_RIDES: Record<string, number> = { h1: 2, h6: 3 };
+
+const tierMeets = (rankPoints: number, tier: AdminTier) => rankPoints >= TIER_THRESHOLDS[tier];
 
 const Booking = () => {
   const [params] = useSearchParams();
