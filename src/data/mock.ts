@@ -5,6 +5,16 @@ import horseGrey from "@/assets/horse-grey.jpg";
 import horseChestnut from "@/assets/horse-chestnut.jpg";
 import horseBlack from "@/assets/horse-black.jpg";
 
+// Skill tier ladder. Compared against User.rankPoints to gate selection.
+export type AdminTier = "novice" | "intermediate" | "advanced" | "master";
+
+export const TIER_THRESHOLDS: Record<AdminTier, number> = {
+  novice: 0,
+  intermediate: 1200,
+  advanced: 1800,
+  master: 2400,
+};
+
 export type Horse = {
   id: string;
   stableId: string;
@@ -13,6 +23,10 @@ export type Horse = {
   age: number;
   temperament: string;
   image: string;
+  // Public, dictionary-aligned fields. basePrice is intentionally NEVER exposed.
+  adminTier: AdminTier;
+  pricePerHour: number;
+  isActive: boolean;
 };
 
 export type Stable = {
